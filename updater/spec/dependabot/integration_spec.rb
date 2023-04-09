@@ -51,7 +51,8 @@ RSpec.describe "Dependabot Updates" do
                     mark_job_as_processed: nil,
                     update_dependency_list: nil,
                     record_update_job_error: nil,
-                    record_package_manager_version: nil)
+                    record_package_manager_version: nil,
+                    increment_metric: nil)
   end
   let(:file_fetcher) do
     instance_double(Dependabot::FileFetchers::Base,
@@ -162,7 +163,7 @@ RSpec.describe "Dependabot Updates" do
                 file: "Gemfile" }
             ]
           )
-          expect(dependency_change.dependencies).to eql([dep])
+          expect(dependency_change.updated_dependencies).to eql([dep])
           expect(dependency_change.updated_dependency_files_hash).to eq(
             [
               {
@@ -361,7 +362,7 @@ RSpec.describe "Dependabot Updates" do
                 file: "Gemfile" }
             ]
           )
-          expect(dependency_change.dependencies).to eql([dep])
+          expect(dependency_change.updated_dependencies).to eql([dep])
           expect(dependency_change.updated_dependency_files_hash).to eq(
             [
               {

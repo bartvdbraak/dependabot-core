@@ -42,7 +42,7 @@ module Dependabot
       api_url = "#{base_url}/update_jobs/#{job_id}/update_pull_request"
       body = {
         data: {
-          "dependency-names": dependency_change.dependencies.map(&:name),
+          "dependency-names": dependency_change.updated_dependencies.map(&:name),
           "updated-dependency-files": dependency_change.updated_dependency_files_hash,
           "base-commit-sha": base_commit_sha
         }
@@ -137,6 +137,21 @@ module Dependabot
       sleep(rand(3.0..10.0)) && retry
     end
 
+    def increment_metric(metric, tags:)
+      api_url = "#{base_url}/update_jobs/#{job_id}/increment_metric"
+      body = {
+        data: {
+          metric: metric,
+          tags: tags
+        }
+      }
+      response = http_client.post(api_url, json: body)
+      # We treat metrics as fire-and-forget, so just warn if they fail.
+      Dependabot.logger.debug("Unable to report metric '#{metric}'.") if response.code >= 400
+    rescue HTTP::ConnectionError, OpenSSL::SSL::SSLError
+      Dependabot.logger.debug("Unable to report metric '#{metric}'.")
+    end
+
     private
 
     attr_reader :base_url, :job_id, :job_token
@@ -153,7 +168,7 @@ module Dependabot
 
     def create_pull_request_data(dependency_change, base_commit_sha)
       data = {
-        dependencies: dependency_change.dependencies.map do |dep|
+        dependencies: dependency_change.updated_dependencies.map do |dep|
           {
             name: dep.name,
             "previous-version": dep.previous_version,

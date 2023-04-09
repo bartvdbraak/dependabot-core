@@ -23,7 +23,7 @@ RSpec.describe Dependabot::Service do
     let(:dependency_change) do
       Dependabot::DependencyChange.new(
         job: instance_double(Dependabot::Job, source: nil, credentials: [], commit_message_options: []),
-        dependencies: dependencies,
+        updated_dependencies: dependencies,
         updated_dependency_files: dependency_files
       )
     end
@@ -76,7 +76,7 @@ RSpec.describe Dependabot::Service do
     let(:dependency_change) do
       Dependabot::DependencyChange.new(
         job: anything,
-        dependencies: dependencies,
+        updated_dependencies: dependencies,
         updated_dependency_files: dependency_files
       )
     end
@@ -169,8 +169,15 @@ RSpec.describe Dependabot::Service do
         expect(mock_client).to have_received(method).with(*arguments)
       end
     end
-  end
 
+    it "delegates increment_metric" do
+      allow(mock_client).to receive(:increment_metric)
+
+      service.increment_metric("apples", tags: { green: 1, red: 2 })
+
+      expect(mock_client).to have_received(:increment_metric).with("apples", tags: { green: 1, red: 2 })
+    end
+  end
   describe "#create_pull_request" do
     include_context :a_pr_was_created
 

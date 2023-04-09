@@ -13,7 +13,6 @@ require "dependabot/service"
 RSpec.describe Dependabot::Updater do
   before do
     allow(Dependabot.logger).to receive(:info)
-    allow(Dependabot.logger).to receive(:error)
 
     stub_request(:get, "https://index.rubygems.org/versions").
       to_return(status: 200, body: fixture("rubygems-index"))
@@ -26,6 +25,8 @@ RSpec.describe Dependabot::Updater do
   describe "#run" do
     # FIXME: This spec fails (when run outside Dockerfile.updater-core) because mode is being changed to 100666
     it "updates dependencies correctly" do
+      allow(Dependabot.logger).to receive(:error)
+
       stub_update_checker
 
       job = build_job
@@ -33,7 +34,7 @@ RSpec.describe Dependabot::Updater do
       updater = build_updater(service: service, job: job)
 
       expect(service).to receive(:create_pull_request) do |dependency_change, base_commit_sha|
-        expect(dependency_change.dependencies.first).to have_attributes(name: "dummy-pkg-b")
+        expect(dependency_change.updated_dependencies.first).to have_attributes(name: "dummy-pkg-b")
         expect(dependency_change.updated_dependency_files_hash).to eql(
           [
             {
@@ -67,6 +68,8 @@ RSpec.describe Dependabot::Updater do
     end
 
     it "updates only the dependencies that need updating" do
+      allow(Dependabot.logger).to receive(:error)
+
       stub_update_checker
 
       job = build_job
@@ -79,6 +82,8 @@ RSpec.describe Dependabot::Updater do
     end
 
     it "logs the current and latest versions" do
+      allow(Dependabot.logger).to receive(:error)
+
       stub_update_checker
 
       job = build_job
@@ -96,6 +101,8 @@ RSpec.describe Dependabot::Updater do
     end
 
     it "does not log empty ignore conditions" do
+      allow(Dependabot.logger).to receive(:error)
+
       job = build_job
       service = build_service
       updater = build_updater(service: service, job: job)
@@ -403,7 +410,7 @@ RSpec.describe Dependabot::Updater do
           updater = build_updater(service: service, job: job)
 
           expect(checker).to receive(:up_to_date?).and_return(true)
-          expect(updater).to_not receive(:generate_dependency_files_for)
+          expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
           expect(service).to_not receive(:create_pull_request)
           expect(service).to receive(:record_update_job_error).
             with(
@@ -782,7 +789,7 @@ RSpec.describe Dependabot::Updater do
           service = build_service
           updater = build_updater(service: service, job: job)
 
-          expect(updater).to_not receive(:generate_dependency_files_for)
+          expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
           expect(service).to_not receive(:create_pull_request)
 
           updater.run
@@ -791,6 +798,7 @@ RSpec.describe Dependabot::Updater do
 
       context "with ignore conditions" do
         it "doesn't set raise_on_ignore for the peer_checker" do
+          allow(Dependabot.logger).to receive(:error)
           checker = stub_update_checker
           allow(checker).
             to receive(:can_update?).with(requirements_to_unlock: :own).
@@ -887,7 +895,7 @@ RSpec.describe Dependabot::Updater do
         updater = build_updater(service: service, job: job)
 
         expect(checker).to_not receive(:can_update?)
-        expect(updater).to_not receive(:generate_dependency_files_for)
+        expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
         expect(service).to_not receive(:create_pull_request)
         expect(service).to_not receive(:record_update_job_error)
         expect(Dependabot.logger).
@@ -916,7 +924,7 @@ RSpec.describe Dependabot::Updater do
 
         expect(checker).to receive(:up_to_date?).and_return(false, false)
         expect(checker).to receive(:can_update?).and_return(true, false)
-        expect(updater).to_not receive(:generate_dependency_files_for)
+        expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
         expect(service).to_not receive(:create_pull_request)
         expect(service).to_not receive(:record_update_job_error)
         expect(Dependabot.logger).
@@ -953,7 +961,7 @@ RSpec.describe Dependabot::Updater do
 
         expect(checker).to receive(:up_to_date?).and_return(false)
         expect(checker).to receive(:can_update?).and_return(true)
-        expect(updater).to_not receive(:generate_dependency_files_for)
+        expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
         expect(service).to_not receive(:create_pull_request)
         expect(service).to receive(:record_update_job_error).
           with(
@@ -998,7 +1006,7 @@ RSpec.describe Dependabot::Updater do
         updater = build_updater(service: service, job: job)
 
         expect(checker).to_not receive(:can_update?)
-        expect(updater).to_not receive(:generate_dependency_files_for)
+        expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
         expect(service).to_not receive(:create_pull_request)
         expect(service).to receive(:record_update_job_error).
           with(
@@ -1097,7 +1105,7 @@ RSpec.describe Dependabot::Updater do
 
         expect(checker).to receive(:up_to_date?).and_return(false)
         expect(checker).to receive(:can_update?).and_return(true)
-        expect(updater).to_not receive(:generate_dependency_files_for)
+        expect(Dependabot::DependencyChangeBuilder).to_not receive(:create_from)
         expect(service).to_not receive(:create_pull_request)
         expect(service).to receive(:record_update_job_error).
           with(
@@ -1523,6 +1531,7 @@ RSpec.describe Dependabot::Updater do
 
     context "when an unknown error is raised while updating dependencies" do
       it "tells Sentry" do
+        allow(Dependabot.logger).to receive(:error)
         checker = stub_update_checker
         error = StandardError.new("hell")
         values = [-> { raise error }, -> { true }, -> { true }, -> { true }]
@@ -1538,6 +1547,8 @@ RSpec.describe Dependabot::Updater do
       end
 
       it "tells the main backend" do
+        allow(Dependabot.logger).to receive(:error)
+
         checker = stub_update_checker
         error = StandardError.new("hell")
         values = [-> { raise error }, -> { true }, -> { true }, -> { true }]
@@ -1559,6 +1570,8 @@ RSpec.describe Dependabot::Updater do
       end
 
       it "continues to process any other dependencies" do
+        allow(Dependabot.logger).to receive(:error)
+
         checker = stub_update_checker
         error = StandardError.new("hell")
         values = [-> { raise error }, -> { true }, -> { true }, -> { true }]
@@ -1838,6 +1851,10 @@ RSpec.describe Dependabot::Updater do
       end
 
       context "when Dependabot::SharedHelpers::HelperSubprocessFailed is raised" do
+        before do
+          allow(Dependabot.logger).to receive(:error)
+        end
+
         it "tells the main backend there has been an unknown error" do
           checker = stub_update_checker
           error =
@@ -1992,7 +2009,7 @@ RSpec.describe Dependabot::Updater do
           updater = build_updater(service: service, job: job, dependency_files: dependency_files)
 
           expect(service).to receive(:create_pull_request) do |dependency_change, base_commit_sha|
-            expect(dependency_change.dependencies.first).to have_attributes(name: "dummy-pkg-b")
+            expect(dependency_change.updated_dependencies.first).to have_attributes(name: "dummy-pkg-b")
             expect(dependency_change.updated_dependency_files_hash).to eql(
               [
                 {
@@ -2029,6 +2046,8 @@ RSpec.describe Dependabot::Updater do
 
     context "with ignore conditions" do
       it "logs ignored versions" do
+        allow(Dependabot.logger).to receive(:error)
+
         job = build_job(
           ignore_conditions: [
             {
@@ -2054,6 +2073,8 @@ RSpec.describe Dependabot::Updater do
       end
 
       it "logs ignore conditions" do
+        allow(Dependabot.logger).to receive(:error)
+
         job = build_job(
           ignore_conditions: [
             {
@@ -2079,6 +2100,8 @@ RSpec.describe Dependabot::Updater do
       end
 
       it "logs ignored update types" do
+        allow(Dependabot.logger).to receive(:error)
+
         job = build_job(
           ignore_conditions: [
             {
@@ -2179,7 +2202,7 @@ RSpec.describe Dependabot::Updater do
       updater = build_updater(service: service, job: job)
 
       expect(service).to receive(:create_pull_request) do |dependency_change, base_commit_sha|
-        expect(dependency_change.dependencies.first).to have_attributes(name: "dummy-pkg-b")
+        expect(dependency_change.updated_dependencies.first).to have_attributes(name: "dummy-pkg-b")
         expect(dependency_change.updated_dependency_files_hash).to eql(
           [
             {
@@ -2248,7 +2271,8 @@ RSpec.describe Dependabot::Updater do
       update_pull_request: nil,
       close_pull_request: nil,
       mark_job_as_processed: nil,
-      record_update_job_error: nil
+      record_update_job_error: nil,
+      increment_metric: nil
     )
 
     service = Dependabot::Service.new(
